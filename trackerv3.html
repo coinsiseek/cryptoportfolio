@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Crypto Portfolio</title>
+</head>
+<body>
+	<h1>Crypto Tracker</h1>
+
+	<label>Select a Crypto:</label>
+	<select id="cryptoSelect">
+		<option value="">-- Select a Crypto --</option>
+		<script>
+			fetch('https://api.coingecko.com/api/v3/coins/list')
+				.then(response => response.json())
+				.then(data => {
+					data.forEach(coin => {
+						var option = document.createElement('option');
+						option.value = coin.id;
+						option.text = coin.name;
+						document.getElementById('cryptoSelect').appendChild(option);
+					});
+				})
+				.catch(error => console.error(error));
+		</script>
+	</select>
+	<button onclick="addCrypto()">Add</button>
+
+	<table>
+		<tr>
+			<th>Name</th>
+			<th>Price (USD)</th>
+			<th>Volume (USD)</th>
+			<th>Market Cap (USD)</th>
+			<th>Delete</th>
+			<th>Up</th>
+			<th>Down</th>
+		</tr>
+
+	
+
+		<script>
+			var cryptos = [];
+
+			function getCryptoData() {
+				fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false')
+					.then(response => response.json())
+					.then(data => {
+						cryptos = data;
+						renderTable();
+					})
+					.catch(error => console.error(error));
+			}
+
+			function renderTable() {
+    var tableBody = document.querySelector('table tbody');
+    tableBody.innerHTML = '';
+    cryptos.forEach((crypto, index) => {
+        var row = document.createElement('tr');
+        row.innerHTML = '<td>' + crypto.name + '</td><td>' + crypto.current_price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + '</td><td>' + crypto.total_volume.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + '</td><td>' + crypto.market_cap.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + '</td><td><button onclick="deleteCrypto(' + index + ')">Delete</button></td><td><button onclick="moveCrypto(' + index + ', \'up\')">↑</button></td><td><button onclick="moveCrypto(' + index + ', \'down\')">↓</button></td>';
+        tableBody.appendChild(row);
+    });
+					     }
+
+			function addCrypto() {
+				var selectedCryptoId = document.getElementById('cryptoSelect').value;
+				if (!selectedCryptoId) {
+					alert('Please select a crypto.');
+					return;
+				}
+
+				fetch('https://api.coingecko.com/api/v3/coins/' + selectedCryptoId + '?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false')
+					.then(response => response.json())
+					.then(data => {
+						var newCrypto = {
+							name: data.name,
+							current_price: data.market_data.current_price.usd,
+							total_volume: data.market_data.total_volume.usd,
+							market_cap: data.market_data.market_cap.usd
+						};
+
+						cryptos.push(newCrypto);
+						renderTable();
+					})
+					.catch(error => console.error(error));
+			}
+
+			function deleteCrypto(index) {
+				cryptos.splice(index, 1);
+				renderTable();
+			}
+			
+			function moveCrypto(index, direction) {
+    if (direction === 'up' && index > 0) {
+        var temp = cryptos[index-1];
+        cryptos[index-1] = cryptos[index];
+        cryptos[index] = temp;
+    } else if (direction === 'down' && index < cryptos.length-1) {
+        var temp = cryptos[index+1];
+        cryptos[index+1] = cryptos[index];
+        cryptos[index] = temp;
+    }
+    renderTable();
+}
+
+			getCryptoData();
+		</script>
+	</table>
+	
+	<h2>Portfolio</h2>
+<label>Select a Crypto:</label>
+<select id="portfolioCryptoSelect">
+    <option value="">-- Select a Crypto --</option>
+    <script>
+    	var cryptos = [];
+        var portfolios = [];
+        
+        fetch('https://api.coingecko.com/api/v3/coins/list')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(coin => {
+                    var option = document.createElement('option');
+                    option.value = coin.id;
+                    option.text = coin.name;
+                    document.getElementById('portfolioCryptoSelect').appendChild(option);
+                });
+            })
+            .catch(error => console.error(error));
+    </script>
+</select>
+<label>Amount:</label>
+<input type="number" id="portfolioAmountInput" min="0">
+<button onclick="addPortfolioCrypto()">Add</button>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Price (USD)</th>
+        <th>Amount</th>
+        <th>Total Value (USD)</th>
+        <th>Delete</th>
+    </tr>
+
+    <tbody id="portfolioTableBody">
+
+    </tbody>
+</table>
+
+
+
+<h2>Total Net Worth: <span id="netWorth"></span></h2>
+
+
+<script>
+    var portfolios = [];
+
+    function getPortfolioData() {
+        var totalValue = 0;
+        var tableBody = document.getElementById('portfolioTableBody');
+        tableBody.innerHTML = '';
+        portfolios.forEach(portfolio => {
+            fetch('https://api.coingecko.com/api/v3/coins/' + portfolio.id + '?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false')
+                .then(response => response.json())
+                .then(data => {
+                    var value = portfolio.amount * data.market_data.current_price.usd;
+                    totalValue += value;
+
+                    var row = document.createElement('tr');
+                    row.innerHTML = '<td>' + data.name + '</td><td>' + data.market_data.current_price.usd.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + '</td><td>' + portfolio.amount + '</td><td>' + value.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + '</td><td><button onclick="deletePortfolioCrypto(\'' + portfolio.id + '\')">Delete</button></td>';
+                    tableBody.appendChild(row);
+
+                    document.getElementById('netWorth').textContent = totalValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+                })
+                .catch(error => console.error(error));
+        });
+    }
+
+    function addPortfolioCrypto() {
+        var cryptoSelect = document.getElementById('portfolioCryptoSelect');
+        var amountInput = document.getElementById('portfolioAmountInput');
+
+        if (cryptoSelect.value === '' || amountInput.value <= 0) {
+            alert('Please select a valid crypto and enter a positive amount.');
+            return;
+        }
+
+        var id = cryptoSelect.value;
+        var amount = parseFloat(amountInput.value);
+
+        var existingPortfolio = portfolios.find(portfolio => portfolio.id === id);
+        if (existingPortfolio) {
+            existingPortfolio.amount += amount;
+        } else {
+            var portfolio = {
+                id: id,
+                amount: amount
+            };
+            portfolios.push(portfolio);
+        }
+
+        getPortfolioData();
+    }
+
+    function deletePortfolioCrypto(id) {
+        var index = portfolios.findIndex(portfolio => portfolio.id === id);
+        if (index !== -1) {
+            portfolios.splice(index, 1);
+        }
+
+        getPortfolioData();
+    }
+</script>
+
+</body>
+</html>
